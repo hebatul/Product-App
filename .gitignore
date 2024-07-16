@@ -86,3 +86,8 @@ Migrations/
 
 # Ignore Publish directory
 publish/
+/src/ProductApp/obj/Debug/net8.0/refint
+/src/ProductApp/bin/Debug/net8.0
+/src/ProductApp/bin/Debug
+/src/ProductApp/bin
+
