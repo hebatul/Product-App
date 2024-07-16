@@ -1,4 +1,12 @@
 # Ignore .NET Core build results
+src/ProductApp/bin/
+src/ProductApp/obj/
+
+# Specifically ignore Debug/net8.0 folder
+src/ProductApp/bin/Debug/net8.0/*
+src/ProductApp/obj/Debug/net8.0/*
+
+# Ignore other build configurations
 [Dd]ebug/
 [Rr]elease/
 x64/
@@ -6,10 +14,6 @@ x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
 
 # Ignore NuGet Packages
 *.nupkg
@@ -37,7 +41,7 @@ npm-debug.log
 .idea/
 
 # Ignore local history for Visual Studio
-.vs/
+src/.vs/
 
 # Ignore user-specific files
 *.rsuser
