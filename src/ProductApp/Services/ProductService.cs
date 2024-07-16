@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using NuGet.Common;
 using ProductApp.Models;
 using System.Drawing.Printing;
 using System.Net.Http.Headers;
@@ -11,6 +12,7 @@ namespace ProductApp.Services
     public class ProductService : IProductService
     {
         #region fields
+        private static int _currentMaxId = 1;
         private readonly HttpClient _httpClient;
         private readonly ILogger<ProductService> _logger;
         private readonly ApiConfigModel _apiSettings;
@@ -60,7 +62,7 @@ namespace ProductApp.Services
         #region methods
         public async Task<PagedList<Product>> GetAllProductsAsync(int pageNumber, int pageSize, string token)
         {
-            
+
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var response = await _httpClient.GetAsync(_apiSettings.BaseUrl + _apiSettings.GetAllProductsEndpoint);
 
@@ -107,7 +109,7 @@ namespace ProductApp.Services
                         return new Product();
                     }
                     var product = products.FirstOrDefault(p => p.Id == id);
-                    return product is null? new Product() : product;
+                    return product is null ? new Product() : product;
                 }
                 catch (JsonException jsonEx)
                 {
@@ -116,18 +118,21 @@ namespace ProductApp.Services
             }
             return new Product();
         }
-      
-        public async Task<ApiResponse<string>> CreateOrUpdateProductAsync(Product product , string token)
+
+        public async Task<ApiResponse<string>> CreateOrUpdateProductAsync(Product product, string token)
         {
+            if (product.Id == 0)
+            {
+                product.Id = (await InitializeCurrentMaxIdAsync(token))+1;
+            }
+
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
             var content = new StringContent(JsonConvert.SerializeObject(product), Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PostAsync(_apiSettings.BaseUrl + _apiSettings.CreateOrEditProductEndpoint, content);
 
             if (response.IsSuccessStatusCode)
             {
-                return new ApiResponse<string> 
+                return new ApiResponse<string>
                 { Success = true, Data = $"Product {product.Name} created/updated successfully." };
             }
             else
@@ -135,6 +140,37 @@ namespace ProductApp.Services
                 _logger.LogError("Error creating/updating product: " + response.ReasonPhrase);
                 return new ApiResponse<string> { Success = false, Message = "Error creating/updating product" };
             }
+        }
+
+
+        private async Task<int> InitializeCurrentMaxIdAsync(string token)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var response = await _httpClient.GetAsync(_apiSettings.BaseUrl + _apiSettings.GetAllProductsEndpoint);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseString = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var products = JsonConvert.DeserializeObject<List<Product>>(responseString);
+                    if (products != null && products.Count > 0)
+                    {
+                        _currentMaxId = products.Max(p => p.Id);
+                    }
+                }
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError("JSON deserialization error: " + jsonEx.Message);
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Error fetching products: " + errorContent);
+            }
+
+            return _currentMaxId;
         }
         #endregion
     }
